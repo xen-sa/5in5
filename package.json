@@ -1,0 +1,13 @@
+{
+  "name": "5in5-live-site",
+  "version": "1.0.0",
+  "description": "Live site for 5in5 sketches using GitHub Pages.",
+  "scripts": {
+    "start": "npx serve .",
+    "deploy": "gh-pages -d ."
+  },
+  "devDependencies": {
+    "gh-pages": "^6.0.0",
+    "serve": "^14.0.1"
+  }
+}
