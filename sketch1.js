@@ -5,7 +5,7 @@ let sketch1 = function(p) {
   let filesSpanish = [];
   let capture;
   let buffer;
-  const sizeText = 10;
+  const sizeText = 11;
   let container;
   let font;
 
