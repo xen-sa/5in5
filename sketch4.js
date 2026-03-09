@@ -3,10 +3,10 @@ let sketch4 = function(p) {
   let ctx;
   let isPaused = true;
 
-  // Shared global variables
   if (typeof window.sharedData === 'undefined') {
       window.sharedData = {};
   }
+
   let randomSpanish;
   let randomEnglish;
 
@@ -20,36 +20,47 @@ let sketch4 = function(p) {
 
   let englishIndex = 0;
   let spanishIndex = 0;
+
   let font;
 
-  const sizeText=14;
+  const sizeText = 14;
+
   let fftLeft, fftRight;
 
-  let waveLeft = [];
-  let waveRight = [];
+  // SPECTROGRAM BUFFERS
+  let specLeft = [];
+  let specRight = [];
 
-  const waveLength = 200;
+  const specHistory = 200;
+  const specBins = 64;
 
   p.preload=function() {
+
     randomSpanish = p.int(p.random(1,35));
     randomEnglish = p.int(p.random(1,10));
+
     font = p.loadFont("font.ttf");
 
-    // Store in global sharedData so other sketches can access
     window.sharedData.randomSpanish = randomSpanish;
     window.sharedData.randomEnglish = randomEnglish;
 
     leftSound = p.loadSound("soundFiles/english/" + randomEnglish + ".m4a");
     rightSound = p.loadSound("soundFiles/spanish/" + randomSpanish + ".m4a");
+    // Standardize volume for both sounds
+    // 0.7 is a typical normalized value; adjust as needed
+    leftSound.setVolume(0.7);
+    rightSound.setVolume(0.7);
 
     englishLines = p.loadStrings("textFiles/english/" + randomEnglish + ".txt");
     spanishLines = p.loadStrings("textFiles/spanish/" + randomSpanish + ".txt");
   }
 
   p.setup=function() {
+
     container = document.getElementById("sketch4");
     let w = container.offsetWidth;
     let h = container.offsetHeight;
+
     let c = p.createCanvas(w, h);
     c.parent(container);
 
@@ -81,44 +92,41 @@ let sketch4 = function(p) {
 
     merger.connect(ctx.destination);
 
-    fftLeft = new p5.FFT();
+    fftLeft = new p5.FFT(0.8, specBins);
     fftLeft.setInput(leftSound);
 
-    fftRight = new p5.FFT();
+    fftRight = new p5.FFT(0.8, specBins);
     fftRight.setInput(rightSound);
   }
 
   p.draw=function() {
+
     p.background(95);
 
     p.stroke(255);
     p.line(p.width/2,0,p.width/2,p.height);
 
-    if(leftSound.isPlaying()){
-        updateEnglish();
-    }
-
-    if(rightSound.isPlaying()){
-        updateSpanish();
-    }
+    if(leftSound.isPlaying()) updateEnglish();
+    if(rightSound.isPlaying()) updateSpanish();
 
     p.noStroke();
     p.fill(0);
 
-    newHeight = p.height*0.8;
+    newHeight = p.height*0.6;
 
-    // Show only the last lines that fit in the box
     let boxHeight = newHeight - 20;
     let boxWidth = p.width/2 - 20;
     let leading = sizeText-4;
+
     p.textLeading(leading);
 
-    // English side
+    // ENGLISH TEXT
     let engLines = p.split(englishParagraph, /\n|(?<=\s)/g);
-    // Re-wrap to fit box width
     let engWrapped = [];
     let temp = "";
+
     for (let w of engLines.join('').split(' ')) {
+
         if (p.textWidth(temp + w + ' ') > boxWidth) {
             engWrapped.push(temp.trim());
             temp = w + ' ';
@@ -126,21 +134,31 @@ let sketch4 = function(p) {
             temp += w + ' ';
         }
     }
+
     if (temp.trim().length > 0) engWrapped.push(temp.trim());
 
     let totalEngLines = engWrapped.length;
+
     if (typeof p.yOffsetEng === 'undefined') p.yOffsetEng = 0;
+
     let maxLines = Math.floor(boxHeight / leading);
+
     p.yOffsetEng = p.constrain(p.yOffsetEng, -(totalEngLines - maxLines), 0);
+
     let startEng = Math.max(0, totalEngLines - maxLines + p.yOffsetEng);
+
     let engToShow = engWrapped.slice(startEng, startEng + maxLines).join('\n');
+
     p.text(engToShow, 10, 10, boxWidth, boxHeight);
 
-    // Spanish side
+    // SPANISH TEXT
     let spaLines = p.split(spanishParagraph, /\n|(?<=\s)/g);
     let spaWrapped = [];
+
     temp = "";
+
     for (let w of spaLines.join('').split(' ')) {
+
         if (p.textWidth(temp + w + ' ') > boxWidth) {
             spaWrapped.push(temp.trim());
             temp = w + ' ';
@@ -148,164 +166,142 @@ let sketch4 = function(p) {
             temp += w + ' ';
         }
     }
+
     if (temp.trim().length > 0) spaWrapped.push(temp.trim());
 
     let totalSpaLines = spaWrapped.length;
+
     if (typeof p.yOffsetSpa === 'undefined') p.yOffsetSpa = 0;
+
     p.yOffsetSpa = p.constrain(p.yOffsetSpa, -(totalSpaLines - maxLines), 0);
+
     let startSpa = Math.max(0, totalSpaLines - maxLines + p.yOffsetSpa);
+
     let spaToShow = spaWrapped.slice(startSpa, startSpa + maxLines).join('\n');
+
     p.text(spaToShow, p.width/2 + 10, 10, boxWidth, boxHeight);
-    // Mouse wheel scroll (only when mouse is over canvas)
-    p.mouseWheel = function(event) {
-        let overEng = p.mouseX >= 10 && p.mouseX <= (10 + boxWidth);
-        let overSpa = p.mouseX >= (p.width/2 + 10) && p.mouseX <= (p.width/2 + 10 + boxWidth);
-        let maxLines = Math.floor((p.height*0.8 - 20) / (sizeText - 4));
-        if (overEng && totalEngLines > maxLines) {
-            p.yOffsetEng -= Math.sign(event.delta);
-            p.yOffsetEng = p.constrain(p.yOffsetEng, -(totalEngLines - maxLines), 0);
-            p.redraw();
-            return false;
-        } else if (overSpa && totalSpaLines > maxLines) {
-            p.yOffsetSpa -= Math.sign(event.delta);
-            p.yOffsetSpa = p.constrain(p.yOffsetSpa, -(totalSpaLines - maxLines), 0);
-            p.redraw();
-            return false;
-        }
-        return true;
-    };
 
-    // Arrow key scroll (when mouse is over canvas)
-    p.keyPressed = function() {
-        let step = 1;
-        let maxLines = Math.floor((p.height*0.8 - 20) / (sizeText - 4));
-        let overEng = p.mouseX >= 10 && p.mouseX <= (10 + boxWidth);
-        let overSpa = p.mouseX >= (p.width/2 + 10) && p.mouseX <= (p.width/2 + 10 + boxWidth);
-        if (overEng && totalEngLines > maxLines) {
-            if (p.keyCode === p.DOWN_ARROW) {
-                p.yOffsetEng = p.constrain(p.yOffsetEng - step, -(totalEngLines - maxLines), 0);
-                p.redraw();
-            } else if (p.keyCode === p.UP_ARROW) {
-                p.yOffsetEng = p.constrain(p.yOffsetEng + step, -(totalEngLines - maxLines), 0);
-                p.redraw();
-            }
-        } else if (overSpa && totalSpaLines > maxLines) {
-            if (p.keyCode === p.DOWN_ARROW) {
-                p.yOffsetSpa = p.constrain(p.yOffsetSpa - step, -(totalSpaLines - maxLines), 0);
-                p.redraw();
-            } else if (p.keyCode === p.UP_ARROW) {
-                p.yOffsetSpa = p.constrain(p.yOffsetSpa + step, -(totalSpaLines - maxLines), 0);
-                p.redraw();
-            }
-        }
-    };
+    // SCROLLING SPECTROGRAM
+    updateSpectrogram();
 
-    updateWaveforms();
-
-    drawScrollingWave(waveLeft, 10, newHeight, p.width/2 - 20, 100);
-    drawScrollingWave(waveRight, p.width/2 + 10, newHeight, p.width/2 - 20, 100);
+    // Fit spectrograms to lower half of canvas
+    let specY = p.height * 0.6;
+    let specH = p.height * 0.4 - 5;
+    drawSpectrogram(specLeft, 10, specY, p.width/2 - 20, specH);
+    drawSpectrogram(specRight, p.width/2 + 10, specY, p.width/2 - 20, specH);
   }
 
   p.mousePressed=function() {
-      if (p.mouseX > 0 && p.mouseX < p.width && p.mouseY > 0 && p.mouseY < p.height){
-          if (isPaused === true) {
-              p.userStartAudio();
 
-              leftSound.play();
-              rightSound.play();
+    if (p.mouseX > 0 && p.mouseX < p.width && p.mouseY > 0 && p.mouseY < p.height){
 
-              isPaused = false;
-          } else {
+        if (isPaused){
 
-              leftSound.pause();
-              rightSound.pause();
+            p.userStartAudio();
 
-              isPaused = true;
-          }
-      }
+            leftSound.play();
+            rightSound.play();
+
+            isPaused = false;
+
+        } else {
+
+            leftSound.pause();
+            rightSound.pause();
+
+            isPaused = true;
+        }
+    }
   }
 
   function parseTranscript(lines, targetArray){
-      for(let l of lines){
-          let match = l.match(/\[(\d+):(\d+)\]\s*(.*)/);
-          if(match){
-              let minutes = p.int(match[1]);
-              let seconds = p.int(match[2]);
-              let text = match[3];
-              let time = minutes*60 + seconds;
-              targetArray.push({
-                  time: time,
-                  text: text
-              });
-          }
-      }
+
+    for(let l of lines){
+
+        let match = l.match(/\[(\d+):(\d+)\]\s*(.*)/);
+
+        if(match){
+
+            let minutes = p.int(match[1]);
+            let seconds = p.int(match[2]);
+            let text = match[3];
+
+            let time = minutes*60 + seconds;
+
+            targetArray.push({
+                time: time,
+                text: text
+            });
+        }
+    }
   }
 
   function updateEnglish(){
-      let t = leftSound.currentTime();
-      if(englishIndex < englishTranscript.length){
 
-          if(t >= englishTranscript[englishIndex].time){
+    let t = leftSound.currentTime();
 
-          englishParagraph += englishTranscript[englishIndex].text + " ";
-          englishIndex++;
+    if(englishIndex < englishTranscript.length){
 
-          }
+        if(t >= englishTranscript[englishIndex].time){
 
-      }
+            englishParagraph += englishTranscript[englishIndex].text + " ";
+            englishIndex++;
+
+        }
+    }
   }
 
   function updateSpanish(){
-      let t = rightSound.currentTime();
 
-      if(spanishIndex < spanishTranscript.length){
+    let t = rightSound.currentTime();
 
-          if(t >= spanishTranscript[spanishIndex].time){
+    if(spanishIndex < spanishTranscript.length){
 
-          spanishParagraph += spanishTranscript[spanishIndex].text + " ";
-          spanishIndex++;
+        if(t >= spanishTranscript[spanishIndex].time){
 
-          }
+            spanishParagraph += spanishTranscript[spanishIndex].text + " ";
+            spanishIndex++;
 
-      }
+        }
+    }
   }
 
-  p.windowResized = function() {
+  p.windowResized=function(){
+
       let w = container.offsetWidth;
       let h = container.offsetHeight;
-      p.resizeCanvas(w, h);
+
+      p.resizeCanvas(w,h);
   };
 
-  function updateWaveforms(){
+  function updateSpectrogram(){
 
-    let wfL = fftLeft.waveform();
-    let wfR = fftRight.waveform();
+    let spectrumL = fftLeft.analyze();
+    let spectrumR = fftRight.analyze();
 
-    // take a single representative sample
-    let sampleL = wfL[wfL.length/2];
-    let sampleR = wfR[wfR.length/2];
+    specLeft.push(spectrumL);
+    specRight.push(spectrumR);
 
-    waveLeft.push(sampleL);
-    waveRight.push(sampleR);
+    if(specLeft.length > specHistory) specLeft.shift();
+    if(specRight.length > specHistory) specRight.shift();
+  }
 
-    if(waveLeft.length > waveLength) waveLeft.shift();
-    if(waveRight.length > waveLength) waveRight.shift();
+  function drawSpectrogram(arr,x,y,w,h){
 
-}
-
-  function drawScrollingWave(arr,x,y,w,h){
-    p.stroke(0,0,0);
-    p.noFill();
-    p.beginShape();
-
-    for(let i=0;i<arr.length;i++){
-        let px = p.map(i,0,waveLength,x,x+w);
-        let py = p.map(arr[i],-1,1,y+h/2,y-h/2);
-
-        p.vertex(px,py);
+    let columnWidth = w / specHistory;
+    for(let t=0;t<arr.length;t++){
+        let spectrum = arr[t];
+        for(let f=0;f<spectrum.length;f+=2){ // skip every other bin for clarity
+            let energy = spectrum[f];
+            let px = x + t * columnWidth;
+            let py = p.map(f,0,spectrum.length,y+h,y);
+            // Map amplitude to brightness (0=black, 255=white)
+            let bright = p.map(energy,0,255,0,255);
+            p.noStroke();
+            p.fill(0, 0, bright); // grayscale, high contrast
+            p.rect(px,py,columnWidth,h/spectrum.length*2);
+        }
     }
-
-    p.endShape();
   }
 }
 

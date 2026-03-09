@@ -54,7 +54,7 @@ let sketch2 = function(p) {
   p.draw = function() {
     p.background(95);
     p.textWrap(p.WORD);
-    rotationAngle -= p.radians(p.frameRate() / 200); // adjust speed
+    rotationAngle -= p.radians(p.frameRate() / 60); // rotate faster
 
     // adjust circle radius based on phrase length, but limit to half canvas height
     let base = 100;
