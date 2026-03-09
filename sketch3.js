@@ -141,7 +141,7 @@ let sketch3 = function(p) {
         let before = excerpt.substring(0, excerptIndex);
         let after = excerpt.substring(excerptIndex + theWord.length);
 
-        let y = i * 24 + 50 + yOffset;
+        let y = i * 24 + 20 + yOffset;
 
         // only draw if visible
         if (y > -30 && y < p.height + 30) {
@@ -170,17 +170,9 @@ let sketch3 = function(p) {
       }
     }
 
-    // Draw scroll indicator if needed
-    if (totalHeight > p.height) {
-      let scrollBarHeight = p.height * p.height / totalHeight;
-      let scrollBarY = -yOffset * p.height / totalHeight;
-      p.fill(180);
-      p.rect(p.width - 10, scrollBarY, 8, scrollBarHeight, 4);
-    }
     p.noLoop();
   };
 
-  // Mouse wheel scroll (only when mouse is over canvas)
   p.mouseWheel = function(event) {
     if (
       p.mouseX >= 0 && p.mouseX <= p.width &&
@@ -217,19 +209,25 @@ let sketch3 = function(p) {
 
   p.mousePressed = function() {
     if(p.mouseX > 0 && p.mouseX < p.width && p.mouseY > 0 && p.mouseY < p.height){
+      let tries = 0;
+      let maxTries = 100;
+      do {
         word = pickRandomWord();
-        if (word && findWordInCorpus(word, englishCorpus) && findWordInCorpus(word, corpusSpanish)) {
+        tries++;
+      } while (
+        tries < maxTries &&
+        (!word || !findWordInCorpus(word, englishCorpus) || !findWordInCorpus(word, corpusSpanish))
+      );
+      if (word && findWordInCorpus(word, englishCorpus) && findWordInCorpus(word, corpusSpanish)) {
         p.redraw();
-    }
+      }
     }
   };
 
-  //// --- CHANGE --- remove accents for comparison
   function removeAccents(text) {
     return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
 
-  //// --- CHANGE --- find accented version of word in the corpus
   function findWordInCorpus(word, corpus) {
     let normalizedCorpus = removeAccents(corpus);
     let idx = normalizedCorpus.indexOf(word);
@@ -239,7 +237,6 @@ let sketch3 = function(p) {
     return corpus.substr(idx, word.length);
   }
 
-  //// --- CHANGE ---
   function pickRandomWord() {
     let tries = 0;
     let maxTries = 100;

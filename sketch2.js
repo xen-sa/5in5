@@ -111,7 +111,7 @@ let sketch2 = function(p) {
     let chars = txt.split("");
     // spacing decreases as circle grows: larger radius -> smaller angle
     // base spacing 5 degrees at small radius, down to 1 degree at large radius
-    let charSpacingAngleDeg = p.map(radius, 150, 600, 5, 1);
+    let charSpacingAngleDeg = p.map(radius, 100, 600, 5, 1);
     charSpacingAngleDeg = p.constrain(charSpacingAngleDeg, 1, 5);
 
     p.textAlign(p.CENTER, p.BASELINE);
