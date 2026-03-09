@@ -27,7 +27,7 @@ let sketch3 = function(p) {
     let h = container.offsetHeight;
     let c = p.createCanvas(w, h);
     c.parent(container);
-    p.textSize(18);
+    p.textSize(20);
     p.colorMode(p.HSB);
     p.textFont(font);
 

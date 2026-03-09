@@ -23,7 +23,7 @@ let sketch4 = function(p) {
 
   let font;
 
-  const sizeText = 14;
+  const sizeText = 18;
 
   let fftLeft, fftRight;
 
