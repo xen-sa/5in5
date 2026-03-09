@@ -8,7 +8,7 @@ let sketch2 = function(p) {
   let filesSpanish = [];
 
   let rotationAngle = 0;
-  let sizeText = 18;
+  let sizeText = 22;
   let font;
   let container;
 
